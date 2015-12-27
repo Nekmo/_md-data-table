@@ -1,4 +1,4 @@
-describe('mdDataTableColumnDirective', function(){
+xdescribe('mdtColumnDirective', function(){
     var $compile,
         $rootScope,
         $scope,
@@ -8,8 +8,9 @@ describe('mdDataTableColumnDirective', function(){
     var DIRECTIVE_DEFAULT_CASE = 'DIRECTIVE_DEFAULT_CASE';
     var DIRECTIVE_LEFT_ALIGNED = 'DIRECTIVE_LEFT_ALIGNED';
     var DIRECTIVE_RIGHT_ALIGNED = 'DIRECTIVE_RIGHT_ALIGNED';
+    var DIRECTIVE_MULTI_COLUMN = 'DIRECTIVE_MULTI_COLUMN';
 
-    beforeEach(module('templates'));
+    beforeEach(module('mdtTemplates'));
     beforeEach(module('mdDataTable'));
 
     beforeEach(inject(function($injector){
@@ -79,7 +80,7 @@ describe('mdDataTableColumnDirective', function(){
 
     describe('WHEN `clickHandler` called', function(){
         beforeEach(function(){
-            compileDirective();
+            compileDirective(DIRECTIVE_MULTI_COLUMN);
         });
 
         it('AND sorting is disabled THEN it should not set the direction', function(){
@@ -89,7 +90,7 @@ describe('mdDataTableColumnDirective', function(){
             });
 
             //when
-            element.click();
+            element.first().click();
 
             //then;
             expect(elementScope.direction).not.toBeDefined();
@@ -102,10 +103,59 @@ describe('mdDataTableColumnDirective', function(){
             });
 
             //when
-            element.click();
+            element.first().click();
 
             //then;
             expect(elementScope.direction).toBeDefined();
+        });
+
+        it('AND sorting is enabled THEN it should set the direction to ascending (-1) on first click', function(){
+            //given
+            spyOn(elementScope, 'isSortingEnabled').and.callFake(function(){
+                return true;
+            });
+
+            //when
+            element.first().click();
+
+            //then;
+            expect(elementScope.direction).toBe(-1);
+        });
+
+        it('AND sorting is enabled THEN it should set the direction to descending (1) on second click', function(){
+            //given
+            spyOn(elementScope, 'isSortingEnabled').and.callFake(function(){
+                return true;
+            });
+
+            //when
+            element.first().click();
+            element.first().click();
+
+            //then;
+            expect(elementScope.direction).toBe(1);
+        });
+
+        it('AND sorting is enabled THEN it should set the direction to ascending (-1) when switching sort column after second click', function(){
+            
+            var lastElementScope = element.last().find('.ng-scope').scope().$parent;
+            //given
+            spyOn(elementScope, 'isSortingEnabled').and.callFake(function(){
+                return true;
+            });
+
+            spyOn(lastElementScope, 'isSortingEnabled').and.callFake(function(){
+                return true;
+            });
+
+
+            //when
+            element.first().click();
+            element.first().click();
+            element.last().click();
+
+            //then;
+            expect(lastElementScope.direction).toBe(-1);
         });
     });
 
@@ -143,30 +193,40 @@ describe('mdDataTableColumnDirective', function(){
         switch(status){
             case DIRECTIVE_LEFT_ALIGNED:
                 mainElement = $compile('' +
-                    '<md-data-table>' +
-                    '   <md-data-table-header-row>' +
-                    '       <md-data-table-column align-rule="left">A Column</md-data-table-column>' +
-                    '   </md-data-table-header-row>' +
-                    '</md-data-table>')($scope);
+                    '<mdt-table>' +
+                    '   <mdt-header-row>' +
+                    '       <mdt-column align-rule="left">A Column</mdt-column>' +
+                    '   </mdt-header-row>' +
+                    '</mdt-table>')($scope);
                 break;
 
             case DIRECTIVE_RIGHT_ALIGNED:
                 mainElement = $compile('' +
-                    '<md-data-table>' +
-                    '   <md-data-table-header-row>' +
-                    '       <md-data-table-column align-rule="right">A Column</md-data-table-column>' +
-                    '   </md-data-table-header-row>' +
-                    '</md-data-table>')($scope);
+                    '<mdt-table>' +
+                    '   <mdt-header-row>' +
+                    '       <mdt-column align-rule="right">A Column</mdt-column>' +
+                    '   </mdt-header-row>' +
+                    '</mdt-table>')($scope);
                 break;
 
+            case DIRECTIVE_MULTI_COLUMN:
+                mainElement = $compile('' +
+                    '<mdt-table>' +
+                    '   <mdt-header-row>' +
+                    '       <mdt-column>A Column</mdt-column>' +
+                    '       <mdt-column>Another Column</mdt-column>' +
+                    '   </mdt-header-row>' +
+                    '</mdt-table>')($scope);
+                break;
+            
             case DIRECTIVE_DEFAULT_CASE:
             default:
                 mainElement = $compile('' +
-                    '<md-data-table>' +
-                    '   <md-data-table-header-row>' +
-                    '       <md-data-table-column>A Column</md-data-table-column>' +
-                    '   </md-data-table-header-row>' +
-                    '</md-data-table>')($scope);
+                    '<mdt-table>' +
+                    '   <mdt-header-row>' +
+                    '       <mdt-column>A Column</mdt-column>' +
+                    '   </mdt-header-row>' +
+                    '</mdt-table>')($scope);
         }
 
         $scope.$digest();

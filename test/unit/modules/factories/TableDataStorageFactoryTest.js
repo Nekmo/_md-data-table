@@ -3,13 +3,17 @@ describe('TableDataStorageFactory', function(){
     var TableDataStorageFactory,
         tableDataStorageService,
         rowData = ['Some', 3, 56, '1%'],
-        rowId = 324;
+        rowId = 324,
+        $log;
 
-    beforeEach(module('templates'));
+    beforeEach(module('mdtTemplates'));
     beforeEach(module('mdDataTable'));
 
     beforeEach(inject(function($injector){
         TableDataStorageFactory = $injector.get('TableDataStorageFactory');
+        $log = $injector.get('$log');
+
+        spyOn($log, 'error');
     }));
 
     it('WHEN created it should has the required function', function(){
@@ -36,17 +40,19 @@ describe('TableDataStorageFactory', function(){
             beforeEach(function(){
                 //given
                 tableDataStorageService = TableDataStorageFactory.getInstance();
+
+                //when
+                tableDataStorageService.addRowData();
             });
 
-            it('THEN it should throw an exception', function(){
-                //when/then
-                expect(function(){
-                    tableDataStorageService.addRowData();
-                }).toThrowError('`rowArray` parameter is required');
+            it('THEN it should call error log', function(){
+                //then
+                expect($log.error).toHaveBeenCalled();
+            });
 
-                expect(function(){
-                    tableDataStorageService.getRowData(0)
-                }).toThrowError();
+            it('AND it should not add anything to the storage', function(){
+                //then
+                expect(tableDataStorageService.storage.length).toEqual(0);
             });
         });
 
@@ -56,17 +62,17 @@ describe('TableDataStorageFactory', function(){
             beforeEach(function(){
                 //given
                 tableDataStorageService = TableDataStorageFactory.getInstance();
+                tableDataStorageService.addRowData(rowId, notArrayRowData);
             });
 
-            it('THEN it should throw an exception', function(){
-                //when/then
-                expect(function(){
-                    tableDataStorageService.addRowData(rowId, notArrayRowData);
-                }).toThrowError('`rowArray` parameter should be array');
+            it('THEN it should call error log', function(){
+                //then
+                expect($log.error).toHaveBeenCalled();
+            });
 
-                expect(function(){
-                    tableDataStorageService.getRowData(0)
-                }).toThrowError();
+            it('THEN it should not add anything to the storage', function(){
+                //then
+                expect(tableDataStorageService.storage.length).toEqual(0);
             });
         });
 
@@ -91,13 +97,13 @@ describe('TableDataStorageFactory', function(){
                 //given
                 tableDataStorageService = TableDataStorageFactory.getInstance();
                 tableDataStorageService.addRowData(rowId, rowData);
+
+                tableDataStorageService.getRowData(4);
             });
 
-            it('THEN it should throw an exception', function(){
-                //when
-                expect(function(){
-                    tableDataStorageService.getRowData(4)
-                }).toThrowError('row is not exists at index: 4');
+            it('THEN it should call error log', function(){
+                //then
+                expect($log.error).toHaveBeenCalled();
             });
         });
 
@@ -121,13 +127,13 @@ describe('TableDataStorageFactory', function(){
                 //given
                 tableDataStorageService = TableDataStorageFactory.getInstance();
                 tableDataStorageService.addRowData(rowId, rowData);
+
+                tableDataStorageService.getRowOptions(4)
             });
 
-            it('THEN it should throw an exception', function(){
-                //when
-                expect(function(){
-                    tableDataStorageService.getRowOptions(4)
-                }).toThrowError('row is not exists at index: 4');
+            it('THEN it should call error log', function(){
+                //then
+                expect($log.error).toHaveBeenCalled();
             });
         });
 
@@ -142,7 +148,8 @@ describe('TableDataStorageFactory', function(){
                 //when
                 expect(tableDataStorageService.getRowOptions(0)).toEqual({
                     selected: false,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 });
             });
         });
@@ -159,10 +166,11 @@ describe('TableDataStorageFactory', function(){
 
         describe('AND parameter is not provided', function(){
             it('THEN it should throw an exception', function(){
-                //when/then
-                expect(function(){
-                    tableDataStorageService.setAllRowsSelected()
-                }).toThrowError('`isSelected` parameter is required');
+                //when
+                tableDataStorageService.setAllRowsSelected();
+
+                //then
+                expect($log.error).toHaveBeenCalled();
             });
         });
 
@@ -173,17 +181,20 @@ describe('TableDataStorageFactory', function(){
                 //when
                 expect(tableDataStorageService.getRowOptions(0)).toEqual({
                     selected: true,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 });
 
                 expect(tableDataStorageService.getRowOptions(1)).toEqual({
                     selected: true,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 });
 
                 expect(tableDataStorageService.getRowOptions(2)).toEqual({
                     selected: true,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 });
             });
 
@@ -194,19 +205,22 @@ describe('TableDataStorageFactory', function(){
                 //when
                 expect(tableDataStorageService.getRowOptions(0)).toEqual({
                     selected: false,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 });
 
                 //when
                 expect(tableDataStorageService.getRowOptions(1)).toEqual({
                     selected: false,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 });
 
                 //when
                 expect(tableDataStorageService.getRowOptions(2)).toEqual({
                     selected: false,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 });
             });
         });

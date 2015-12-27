@@ -19,12 +19,12 @@ module.exports = function() {
         ]),
 
         preprocessors: {
-            'app/modules/**/*.html': ['html2js']
+            'app/modules/**/*.html': ['ng-html2js']
         },
 
         ngHtml2JsPreprocessor: {
             stripPrefix: 'app/modules',
-            moduleName:  'templates'
+            moduleName:  'mdtTemplates'
         },
 
         frameworks: ['jasmine-jquery', 'jasmine'],

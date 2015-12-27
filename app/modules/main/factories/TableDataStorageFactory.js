@@ -1,26 +1,37 @@
 (function(){
     'use strict';
 
-    function TableDataStorageFactory(){
+    function TableDataStorageFactory($log){
 
         function TableDataStorageService(){
             this.storage = [];
+            this.header = [];
+
+            this.sortByColumnLastIndex = null;
+            this.orderByAscending = true;
         }
+
+        TableDataStorageService.prototype.addHeaderCellData = function(ops){
+            this.header.push(ops);
+        };
 
         TableDataStorageService.prototype.addRowData = function(explicitRowId, rowArray){
             if(rowArray === undefined){
-                throw new Error('`rowArray` parameter is required');
+                $log.error('`rowArray` parameter is required');
+                return;
             }
 
             if(!(rowArray instanceof Array)){
-                throw new Error('`rowArray` parameter should be array');
+                $log.error('`rowArray` parameter should be array');
+                return;
             }
 
             this.storage.push({
                 rowId: explicitRowId,
                 optionList: {
                     selected: false,
-                    deleted: false
+                    deleted: false,
+                    visible: true
                 },
                 data: rowArray
             });
@@ -28,7 +39,8 @@
 
         TableDataStorageService.prototype.getRowData = function(index){
             if(!this.storage[index]){
-                throw Error('row is not exists at index: '+index);
+                $log.error('row is not exists at index: '+index);
+                return;
             }
 
             return this.storage[index].data;
@@ -36,19 +48,27 @@
 
         TableDataStorageService.prototype.getRowOptions = function(index){
             if(!this.storage[index]){
-                throw Error('row is not exists at index: '+index);
+                $log.error('row is not exists at index: '+index);
+                return;
             }
 
             return this.storage[index].optionList;
         };
 
-        TableDataStorageService.prototype.setAllRowsSelected = function(isSelected){
+        TableDataStorageService.prototype.setAllRowsSelected = function(isSelected, isPaginationEnabled){
             if(isSelected === undefined){
-                throw new Error('`isSelected` parameter is required');
+                $log.error('`isSelected` parameter is required');
+                return;
             }
 
             _.each(this.storage, function(rowData){
-                rowData.optionList.selected = isSelected ? true : false;
+                if(isPaginationEnabled) {
+                    if (rowData.optionList.visible) {
+                        rowData.optionList.selected = isSelected ? true : false;
+                    }
+                }else{
+                    rowData.optionList.selected = isSelected ? true : false;
+                }
             });
         };
 
@@ -56,10 +76,35 @@
             this.storage.reverse();
         };
 
-        TableDataStorageService.prototype.sortByColumnIndex = function(index){
-            var res =_.sortBy(this.storage, function(rowData){
-                return rowData.data[index];
-            });
+        TableDataStorageService.prototype.sortByColumn = function(columnIndex, iteratee){
+            if(this.sortByColumnLastIndex === columnIndex){
+                this.reverseRows();
+
+                this.orderByAscending = !this.orderByAscending;
+            }else{
+                this.sortByColumnIndex(columnIndex, iteratee);
+
+                this.sortByColumnLastIndex = columnIndex;
+                this.orderByAscending = true;
+            }
+
+            return this.orderByAscending ? -1 : 1;
+        };
+
+        TableDataStorageService.prototype.sortByColumnIndex = function(index, iteratee){
+
+            var sortFunction;
+            if (typeof iteratee === 'function') {
+                sortFunction = function(rowData) {
+                    return iteratee(rowData.data[index], rowData, index);
+                };
+            } else {
+                sortFunction = function (rowData) {
+                    return rowData.data[index];
+                };
+            }
+
+            var res = _.sortBy(this.storage, sortFunction);
 
             this.storage = res;
         };

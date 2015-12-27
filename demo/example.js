@@ -15,6 +15,9 @@
         $scope.tableCardIsEnabled = true;
         $scope.tableIsSelectable = true;
         $scope.tableIsSortable = true;
+        $scope.paginationEnabled = true;
+        $scope.isSortIconAnimated = true;
+        $scope.rippleEffectEnabled = false;
 
         $scope.deleteRowCallback = function(rows){
             $mdToast.show(
