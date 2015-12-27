@@ -6,26 +6,6 @@
 (function(){
     'use strict';
 
-    function ColumnAlignmentHelper(ColumnOptionProvider){
-        var service = this;
-        service.getColumnAlignClass = getColumnAlignClass;
-
-        function getColumnAlignClass(alignRule) {
-            if (alignRule === ColumnOptionProvider.ALIGN_RULE.ALIGN_RIGHT) {
-                return 'rightAlignedColumn';
-            } else {
-                return 'leftAlignedColumn';
-            }
-        }
-    }
-
-    angular
-        .module('mdDataTable')
-        .service('ColumnAlignmentHelper', ColumnAlignmentHelper);
-}());
-(function(){
-    'use strict';
-
     function mdDataTableAlternateHeadersDirective(){
         return {
             restrict: 'E',
@@ -343,6 +323,26 @@
 (function(){
     'use strict';
 
+    function ColumnAlignmentHelper(ColumnOptionProvider){
+        var service = this;
+        service.getColumnAlignClass = getColumnAlignClass;
+
+        function getColumnAlignClass(alignRule) {
+            if (alignRule === ColumnOptionProvider.ALIGN_RULE.ALIGN_RIGHT) {
+                return 'rightAlignedColumn';
+            } else {
+                return 'leftAlignedColumn';
+            }
+        }
+    }
+
+    angular
+        .module('mdDataTable')
+        .service('ColumnAlignmentHelper', ColumnAlignmentHelper);
+}());
+(function(){
+    'use strict';
+
     var ColumnOptionProvider = {
         ALIGN_RULE : {
             ALIGN_LEFT: 'left',
@@ -353,6 +353,136 @@
     angular.module('mdDataTable')
         .value('ColumnOptionProvider', ColumnOptionProvider);
 })();
+(function(){
+    'use strict';
+
+    function mdDataTableCellDirective(ColumnAlignmentHelper, $parse){
+        return {
+            restrict: 'E',
+            templateUrl: '/main/templates/mdDataTableCell.html',
+            replace: true,
+            transclude: true,
+            scope: {
+                htmlContent: '@'
+            },
+            require: ['^mdDataTable','^mdDataTableRow'],
+            link: function($scope, element, attrs, ctrl, transclude){
+                var mdDataTableCtrl = ctrl[0];
+                var mdDataTableRowCtrl = ctrl[1];
+                var columnIndex = mdDataTableRowCtrl.getIndex();
+
+                //TODO: refactor as the columnDirective
+                $scope.getColumnAlignClass = ColumnAlignmentHelper.getColumnAlignClass(getColumnOptions().alignRule);
+
+                transclude(function (clone) {
+
+                    //TODO: rework, figure out something for including html content
+                    if($scope.htmlContent){
+                        mdDataTableRowCtrl.addToRowDataStorage(columnIndex);
+                    }else{
+                        //TODO: better idea?
+                        var cellValue = $parse(clone.html().replace('{{', '').replace('}}', ''))($scope.$parent);
+                        mdDataTableRowCtrl.addToRowDataStorage(cellValue);
+                    }
+                });
+
+                $scope.getCellValue = getCellValue;
+
+                mdDataTableRowCtrl.increaseIndex();
+
+                function getColumnOptions(){
+                    return mdDataTableCtrl.getColumnOptions(columnIndex);
+                }
+
+                function getCellValue(){
+                    return mdDataTableRowCtrl.getRowDataStorageValue(columnIndex);
+                }
+            }
+        };
+    }
+
+    angular
+        .module('mdDataTable')
+        .directive('mdDataTableCell', mdDataTableCellDirective);
+}());
+(function(){
+    'use strict';
+
+    function mdDataTableRowDirective(IndexTrackerFactory){
+        return {
+            restrict: 'E',
+            templateUrl: '/main/templates/mdDataTableRow.html',
+            replace: true,
+            transclude: true,
+            require: '^mdDataTable',
+            scope: {
+                tableRowId: '=',
+                rowSelected: '='
+            },
+            controller: function($scope){
+                var vm = this;
+
+                initIndexTrackerServiceAndBindMethods();
+
+                vm.addToRowDataStorage = addToRowDataStorage;
+                vm.getRowDataStorageValue = getRowDataStorageValue;
+                $scope.rowDataStorage = [];
+
+                function initIndexTrackerServiceAndBindMethods(){
+                    var indexHelperService = IndexTrackerFactory.getInstance();
+
+                    vm.increaseIndex = _.bind(indexHelperService.increaseIndex, indexHelperService);
+                    vm.getIndex = _.bind(indexHelperService.getIndex, indexHelperService);
+                }
+
+                function addToRowDataStorage(value){
+                    $scope.rowDataStorage.push(value);
+                }
+
+                function getRowDataStorageValue(columnIndex){
+                    return $scope.getRowDataStorage()[columnIndex];
+                }
+            },
+            link: function($scope, element, attrs, ctrl, transclude){
+                appendColumns();
+
+                var rowIndex = ctrl.getIndex();
+                $scope.getRowOptions = getRowOptions;
+                $scope.isSelectableRows = ctrl.isSelectableRows;
+
+                ctrl.addRowData($scope.tableRowId, $scope.rowDataStorage);
+
+                $scope.getRowDataStorage = function(){
+                    return ctrl.getRowData(rowIndex);
+                };
+
+                ctrl.increaseIndex();
+
+                function appendColumns(){
+                    //TODO: question: the commented out code is not working properly when data-table-row has an ng-repeat. Why?
+                    //angular.element(transclude()).appendTo(element);
+
+                    transclude(function (clone) {
+                        element.append(clone);
+                    });
+                }
+
+                function getRowOptions(){
+                    return ctrl.getRowOptions(rowIndex);
+                }
+                
+                $scope.rowSelected = getRowOptions().selected;
+                $scope.$watch('rowSelected', function(){
+                    getRowOptions().selected = $scope.rowSelected;
+                });
+            }
+        };
+    }
+
+    angular
+        .module('mdDataTable')
+        .directive('mdDataTableRow', mdDataTableRowDirective);
+}());
 (function(){
     'use strict';
 
@@ -369,20 +499,19 @@
             link: function ($scope, element, attrs, ctrl) {
                 var mdDataTableCtrl = ctrl[0];
                 var mdDataTableHeaderRowCtrl = ctrl[1];
+                var columnIndex;
 
-                var columnIndex = mdDataTableHeaderRowCtrl.getIndex();
+                getCurrentRowIndex();
+                setColumnOptionsForMainController();
+                setColumnAlignClass();
 
-                $scope.getColumnAlignClass = ColumnAlignmentHelper.getColumnAlignClass($scope.alignRule);
-                $scope.ColumnOptionProvider = ColumnOptionProvider;
-                $scope.columnOptions = mdDataTableCtrl.addColumnOptions({
-                    alignRule: $scope.alignRule
-                });
-                $scope.direction = 1;
                 $scope.isSorted = isSorted;
                 $scope.clickHandler = clickHandler;
-                $scope.isSortingEnabled = mdDataTableCtrl.isSortingEnabled;
+                $scope.isColumnLeftAligned = isColumnLeftAligned;
+                $scope.isColumnRightAligned = isColumnRightAligned;
+                $scope.isSortingEnabled = isSortingEnabled;
 
-                mdDataTableHeaderRowCtrl.increaseIndex();
+                increaseRowIndex();
 
                 function clickHandler(){
                     if($scope.isSortingEnabled()) {
@@ -392,6 +521,36 @@
 
                 function isSorted(){
                     return mdDataTableCtrl.getSortedColumnIndex() === columnIndex;
+                }
+
+                function setColumnOptionsForMainController(){
+                    mdDataTableCtrl.addColumnOptions({
+                        alignRule: $scope.alignRule
+                    });
+                }
+
+                function setColumnAlignClass(){
+                    $scope.columnAlignClass = ColumnAlignmentHelper.getColumnAlignClass($scope.alignRule);
+                }
+
+                function isColumnLeftAligned(){
+                    return ColumnOptionProvider.ALIGN_RULE.ALIGN_LEFT === $scope.alignRule;
+                }
+
+                function isColumnRightAligned(){
+                    return ColumnOptionProvider.ALIGN_RULE.ALIGN_RIGHT === $scope.alignRule;
+                }
+
+                function isSortingEnabled(){
+                    return mdDataTableCtrl.isSortingEnabled();
+                }
+
+                function increaseRowIndex(){
+                    mdDataTableHeaderRowCtrl.increaseIndex();
+                }
+
+                function getCurrentRowIndex(){
+                    columnIndex = mdDataTableHeaderRowCtrl.getIndex();
                 }
             }
         };
@@ -449,129 +608,6 @@
     angular
         .module('mdDataTable')
         .directive('mdDataTableHeaderRow', mdDataTableHeaderRowDirective);
-}());
-(function(){
-    'use strict';
-
-    function mdDataTableCellDirective(ColumnAlignmentHelper, $parse){
-        return {
-            restrict: 'E',
-            templateUrl: '/main/templates/mdDataTableCell.html',
-            replace: true,
-            transclude: true,
-            scope: {
-                htmlContent: '@'
-            },
-            require: ['^mdDataTable','^mdDataTableRow'],
-            link: function($scope, element, attrs, ctrl, transclude){
-                var mdDataTableCtrl = ctrl[0];
-                var mdDataTableRowCtrl = ctrl[1];
-                var columnIndex = mdDataTableRowCtrl.getIndex();
-
-                $scope.getColumnAlignClass = ColumnAlignmentHelper.getColumnAlignClass(getColumnOptions().alignRule);
-
-                transclude(function (clone) {
-
-                    //TODO: rework, figure out something for including html content
-                    if($scope.htmlContent){
-                        mdDataTableRowCtrl.addToRowDataStorage(columnIndex);
-                    }else{
-                        //TODO: better idea?
-                        var cellValue = $parse(clone.html().replace('{{', '').replace('}}', ''))($scope.$parent);
-                        mdDataTableRowCtrl.addToRowDataStorage(cellValue);
-                    }
-                });
-
-                $scope.getCellValue = getCellValue;
-
-                mdDataTableRowCtrl.increaseIndex();
-
-                function getColumnOptions(){
-                    return mdDataTableCtrl.getColumnOptions(columnIndex);
-                }
-
-                function getCellValue(){
-                    return mdDataTableRowCtrl.getRowDataStorageValue(columnIndex);
-                }
-            }
-        };
-    }
-
-    angular
-        .module('mdDataTable')
-        .directive('mdDataTableCell', mdDataTableCellDirective);
-}());
-(function(){
-    'use strict';
-
-    function mdDataTableRowDirective(IndexTrackerFactory){
-        return {
-            restrict: 'E',
-            templateUrl: '/main/templates/mdDataTableRow.html',
-            replace: true,
-            transclude: true,
-            require: '^mdDataTable',
-            scope: {
-                tableRowId: '='
-            },
-            controller: function($scope){
-                var vm = this;
-
-                initIndexTrackerServiceAndBindMethods();
-
-                vm.addToRowDataStorage = addToRowDataStorage;
-                vm.getRowDataStorageValue = getRowDataStorageValue;
-                $scope.rowDataStorage = [];
-
-                function initIndexTrackerServiceAndBindMethods(){
-                    var indexHelperService = IndexTrackerFactory.getInstance();
-
-                    vm.increaseIndex = _.bind(indexHelperService.increaseIndex, indexHelperService);
-                    vm.getIndex = _.bind(indexHelperService.getIndex, indexHelperService);
-                }
-
-                function addToRowDataStorage(value){
-                    $scope.rowDataStorage.push(value);
-                }
-
-                function getRowDataStorageValue(columnIndex){
-                    return $scope.getRowDataStorage()[columnIndex];
-                }
-            },
-            link: function($scope, element, attrs, ctrl, transclude){
-                appendColumns();
-
-                var rowIndex = ctrl.getIndex();
-                $scope.getRowOptions = getRowOptions;
-                $scope.isSelectableRows = ctrl.isSelectableRows;
-
-                ctrl.addRowData($scope.tableRowId, $scope.rowDataStorage);
-
-                $scope.getRowDataStorage = function(){
-                    return ctrl.getRowData(rowIndex);
-                };
-
-                ctrl.increaseIndex();
-
-                function appendColumns(){
-                    //TODO: question: the commented out code is not working properly when data-table-row has an ng-repeat. Why?
-                    //angular.element(transclude()).appendTo(element);
-
-                    transclude(function (clone) {
-                        element.append(clone);
-                    });
-                }
-
-                function getRowOptions(){
-                    return ctrl.getRowOptions(rowIndex);
-                }
-            }
-        };
-    }
-
-    angular
-        .module('mdDataTable')
-        .directive('mdDataTableRow', mdDataTableRowDirective);
 }());
 (function(){
     'use strict';

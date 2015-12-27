@@ -20,22 +20,23 @@
     "lodash": "^3.5.0"
   },
   "devDependencies": {
+    "codeclimate-test-reporter": "0.0.4",
     "fstream": "^1.0.4",
     "glob": "^5.0.2",
-    "gulp-concat": "^2.4.3",
-    "gulp-plumber": "^0.6.6",
-    "gulp-rimraf": "^0.1.1",
-    "gulp-uglify": "^1.1.0",
     "gulp-cached": "^1.1.0",
-    "gulp-jshint": "^1.11.0",
-    "gulp-rename": "^1.2.2",
+    "gulp-concat": "^2.6.0",
+    "gulp-jshint": "^1.11.2",
     "gulp-karma": "~0.0.4",
+    "gulp-plumber": "^0.6.6",
+    "gulp-rename": "^1.2.2",
+    "gulp-rimraf": "^0.1.1",
+    "gulp-sass": "^2.0.4",
+    "gulp-uglify": "^1.4.0",
     "jasmine-reporters": "^2.0.5",
     "karma": "^0.12.31",
     "karma-ng-html2js-preprocessor": "~0.1.2",
     "karma-traceur-preprocessor": "^0.4.0",
     "run-sequence": "^1.0.2",
-    "traceur": "0.0.87",
-    "codeclimate-test-reporter": "0.0.4"
+    "traceur": "0.0.87"
   }
 }

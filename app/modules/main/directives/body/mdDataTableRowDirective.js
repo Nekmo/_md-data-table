@@ -9,7 +9,8 @@
             transclude: true,
             require: '^mdDataTable',
             scope: {
-                tableRowId: '='
+                tableRowId: '=',
+                rowSelected: '='
             },
             controller: function($scope){
                 var vm = this;
@@ -62,6 +63,11 @@
                 function getRowOptions(){
                     return ctrl.getRowOptions(rowIndex);
                 }
+                
+                $scope.rowSelected = getRowOptions().selected;
+                $scope.$watch('rowSelected', function(){
+                    getRowOptions().selected = $scope.rowSelected;
+                });
             }
         };
     }
